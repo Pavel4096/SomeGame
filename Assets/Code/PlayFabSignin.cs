@@ -125,7 +125,7 @@ public sealed class PlayFabSignin : MonoBehaviour
     private void LoginSucceeded(LoginResult result)
     {
         _resultWaiter.HideWaiter();
-        Debug.Log("Login succeded");
+        Debug.Log("Login succeeded");
         if(_needsSaveGUID)
             PlayerPrefs.SetString(PlayFabSignin.idStorageKey, _userGUID);
         LoadNextScene();

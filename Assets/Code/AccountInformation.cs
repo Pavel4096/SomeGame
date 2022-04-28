@@ -13,25 +13,26 @@ public class AccountInformation : MonoBehaviour
     {
         _resultWaiter = Object.FindObjectOfType<ResultWaiter>();
 
-        PlayFabClientAPI.GetPlayerProfile(new GetPlayerProfileRequest(), ProfileLoaded, ProfileLoadFail);
+        PlayFabClientAPI.GetAccountInfo(new GetAccountInfoRequest(), InformationLoaded, InformationLoadFail);
         _resultWaiter.ShowWaiter();
     }
 
-    private void ProfileLoaded(GetPlayerProfileResult result)
+    private void InformationLoaded(GetAccountInfoResult result)
     {
         _resultWaiter.HideWaiter();
-        ShowInformation(result.PlayerProfile);
+        ShowInformation(result.AccountInfo);
     }
 
-    private void ProfileLoadFail(PlayFabError error)
+    private void InformationLoadFail(PlayFabError error)
     {
         _resultWaiter.HideWaiter();
         Debug.Log($"{error.GenerateErrorReport()}");
     }
 
-    private void ShowInformation(PlayerProfileModel profile)
+    private void ShowInformation(UserAccountInfo info)
     {
-        _informationText.text = $"Created: {profile.Created}";
-        _informationText.text += $"\nLast login: {profile.LastLogin}";
+        _informationText.text = $"User: {info.Username}";
+        _informationText.text += $"\nCreated: {info.Created}";
+        _informationText.text += $"\nLast login: {info.TitleInfo.LastLogin}";
     }
 }
