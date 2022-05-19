@@ -76,6 +76,8 @@ public sealed class PlayerController : MonoBehaviour, IPunObservable, IPunInstan
         {
             transform.position = (Vector3) stream.ReceiveNext();
             transform.rotation = (Quaternion) stream.ReceiveNext();
+            _modelTransform.localPosition = new Vector3(0.0f, 0.0f, 0.0f);
+            _modelTransform.localRotation = Quaternion.identity;
             bool newIsRunning = (bool) stream.ReceiveNext();
 
             if(_isRunning != newIsRunning)

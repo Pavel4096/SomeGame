@@ -64,7 +64,7 @@ Rigidbody:
   m_UseGravity: 1
   m_IsKinematic: 0
   m_Interpolate: 0
-  m_Constraints: 80
+  m_Constraints: 112
   m_CollisionDetection: 0
 --- !u!114 &7039487820070283998
 MonoBehaviour:
@@ -107,7 +107,7 @@ MonoBehaviour:
   _rigidbody: {fileID: 7039487820070283999}
   _modelTransform: {fileID: 7039487820890756033}
   _speed: 0
-  _rotationSpeed: 90
+  _rotationSpeed: 150
 --- !u!1 &7039487820753619334
 GameObject:
   m_ObjectHideFlags: 0
