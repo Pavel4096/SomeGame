@@ -12,9 +12,15 @@ public sealed class PlayerController : MonoBehaviour, IPunObservable, IPunInstan
     [SerializeField] private float _rotationSpeed;
     private bool _isRunning;
     private float _hp;
+    private InventoryController _inventoryController;
 
     private const string _VERTICAL_AXIS = "Vertical";
     private const string _HORIZONTAL_AXIS = "Horizontal";
+    private readonly KeyCode _throwGrenadeKey = KeyCode.LeftAlt;
+    private const string _grenadeItemId = "Grenade";
+    private const string _grenadePrefab = "Grenade";
+    private const float _grenadeImpulseMultiplier = 5.0f;
+    private const float _grenadeVerticalOffset = 2.0f;
 
     private void Awake()
     {
@@ -22,6 +28,7 @@ public sealed class PlayerController : MonoBehaviour, IPunObservable, IPunInstan
         {
             _camera.SetActive(true);
             Camera.main.gameObject.SetActive(false);
+            _inventoryController = new InventoryController();
         }
     }
 
@@ -57,6 +64,17 @@ public sealed class PlayerController : MonoBehaviour, IPunObservable, IPunInstan
         transform.rotation = _modelTransform.rotation;
         _modelTransform.localPosition = new Vector3(0.0f, 0.0f, 0.0f);
         _modelTransform.localRotation = Quaternion.identity;
+
+        if(Input.GetKeyDown(_throwGrenadeKey))
+        {
+            if(_inventoryController.UseInventoryItem(_grenadeItemId))
+            {
+                Vector3 position = transform.position + transform.up * _grenadeVerticalOffset;
+                GameObject grenade = PhotonNetwork.Instantiate(_grenadePrefab, position, transform.rotation);
+                Vector3 impulse = (transform.forward + transform.up).normalized * _grenadeImpulseMultiplier;
+                grenade.GetComponent<Rigidbody>().AddForce(impulse, ForceMode.Impulse);
+            }
+        }
     }
 
     public void OnPhotonInstantiate(PhotonMessageInfo info)
