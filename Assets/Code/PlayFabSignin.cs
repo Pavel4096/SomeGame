@@ -141,6 +141,7 @@ public sealed class PlayFabSignin : MonoBehaviour
 
     private void LoadNextScene()
     {
+        GameObject playerData = new GameObject("PlayerData", typeof(PlayerData));
         SceneManager.LoadScene("Game");
     }
 

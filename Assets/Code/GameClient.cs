@@ -7,6 +7,8 @@ public sealed class GameClient : MonoBehaviourPunCallbacks
 {
     [SerializeField] private GameList _gameList;
     [SerializeField] private NewGameWindow _newGameWindow;
+    [SerializeField] private ShopWindow _shopWindow;
+    [SerializeField] private InventoryWindow _inventoryWindow;
     [SerializeField] private GameController _gameControllerPrefab;
     private GameController _gameController;
 
@@ -57,6 +59,8 @@ public sealed class GameClient : MonoBehaviourPunCallbacks
     {
         _gameList.gameObject.SetActive(false);
         _newGameWindow.gameObject.SetActive(false);
+        _shopWindow.gameObject.SetActive(false);
+        _inventoryWindow.gameObject.SetActive(false);
         _gameController = Instantiate(_gameControllerPrefab);
         _gameController.UpdatePlayers(PhotonNetwork.PlayerList);
     }
