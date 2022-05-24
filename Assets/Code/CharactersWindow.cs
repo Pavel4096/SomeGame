@@ -25,6 +25,7 @@ public sealed class CharactersWindow : MonoBehaviour
         }
 
         _newCharacterWindow.CloseWindow();
+        _playerData = Object.FindObjectOfType<PlayerData>();
     }
 
     private void OnDestroy()
@@ -59,6 +60,7 @@ public sealed class CharactersWindow : MonoBehaviour
             if(i < _characters.Length)
             {
                 PlayerInformation playerInformation = JsonUtility.FromJson<PlayerInformation>(_shopWindow.CatalogItems[result.Characters[i].CharacterType].CustomData);
+                playerInformation.CharacterId = result.Characters[i].CharacterId;
                 _playerInformations.Add(playerInformation);
                 _characters[i].SetCharacter(result.Characters[i].CharacterName, playerInformation.MaxHP, playerInformation.Damage, i);
             }
@@ -67,7 +69,7 @@ public sealed class CharactersWindow : MonoBehaviour
 
     private void ProcessCharacterSelection(int id)
     {
-        Debug.Log($"Selected character: {_userCharacters[id].CharacterName} - MaxHP: '{_playerInformations[id].MaxHP}' Damage: {_playerInformations[id].Damage}");
+        _playerData.PlayerInformation = _playerInformations[id];
     }
 
     private void LogError(PlayFabError error)

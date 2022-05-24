@@ -37,6 +37,7 @@ public sealed class CharacterItem : MonoBehaviour
 
     public void SetCharacter(string name, float maxHP, float damage, int id)
     {
+        _id = id;
         _addNewButton.gameObject.SetActive(false);
         _characterButton.gameObject.SetActive(true);
         _name.text = name;

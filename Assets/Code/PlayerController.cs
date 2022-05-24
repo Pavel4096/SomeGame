@@ -1,6 +1,9 @@
+using System.Collections.Generic;
 using Photon.Pun;
 using Photon.Realtime;
 using ExitGames.Client.Photon;
+using PlayFab;
+using PlayFab.ClientModels;
 using UnityEngine;
 
 public sealed class PlayerController : MonoBehaviour, IPunObservable, IPunInstantiateMagicCallback, IOnEventCallback
@@ -14,9 +17,11 @@ public sealed class PlayerController : MonoBehaviour, IPunObservable, IPunInstan
     [SerializeField] private float _rotationSpeed;
     private bool _isRunning;
     private float _hp;
-    private float _damage = 250.0f;
+    private float _damage;
     private InventoryController _inventoryController;
     private float _lastShootTime;
+    private PlayerInformation _playerInformation;
+    private int _currentXP;
 
     private const string _VERTICAL_AXIS = "Vertical";
     private const string _HORIZONTAL_AXIS = "Horizontal";
@@ -28,6 +33,7 @@ public sealed class PlayerController : MonoBehaviour, IPunObservable, IPunInstan
     private const float _grenadeVerticalOffset = 2.0f;
     private const float _timeBetweenShoots = 0.5f;
     private const byte _shootCode = 1;
+    private const int _xpToAdd = 500;
 
     private void Awake()
     {
@@ -37,6 +43,13 @@ public sealed class PlayerController : MonoBehaviour, IPunObservable, IPunInstan
             Camera.main.gameObject.SetActive(false);
             _inventoryController = new InventoryController();
         }
+
+        PlayerData playerData = Object.FindObjectOfType<PlayerData>();
+        _playerInformation = playerData?.PlayerInformation;
+
+        PlayFabClientAPI.GetCharacterStatistics(new GetCharacterStatisticsRequest {
+            CharacterId = _playerInformation.CharacterId
+        }, ProcessAvailableStatistics, LogError);
     }
 
     private void OnEnable()
@@ -98,6 +111,9 @@ public sealed class PlayerController : MonoBehaviour, IPunObservable, IPunInstan
         if(eventData.Code == _shootCode)
         {
             object[] data = (object[]) eventData.CustomData;
+
+            Debug.Log($"{data.GetType()}");
+            Debug.Log($"{data.Length}");
             int viewID = (int) data[0];
             float damage = (float) data[1];
 
@@ -130,14 +146,47 @@ public sealed class PlayerController : MonoBehaviour, IPunObservable, IPunInstan
                 PhotonNetwork.RaiseEvent(_shootCode, data, raiseOptions, new SendOptions {
                     Reliability = true
                 });
+
+                UpdateStatistics();
             }
             _lastShootTime = Time.time;
         }
     }
 
+    private void UpdateStatistics()
+    {
+        _currentXP += _xpToAdd;
+        PlayFabClientAPI.UpdateCharacterStatistics(new UpdateCharacterStatisticsRequest {
+            CharacterId = _playerInformation.CharacterId,
+            CharacterStatistics = new Dictionary<string, int> {
+                ["XP"] = _currentXP
+            }
+        }, null, LogError);
+    }
+
+    private void ProcessAvailableStatistics(GetCharacterStatisticsResult result)
+    {
+        int availableXP = 0;
+        if(result.CharacterStatistics.ContainsKey("XP"))
+            availableXP = result.CharacterStatistics["XP"];
+
+        _currentXP += availableXP;
+
+        Debug.Log($"CurrentXP: {_currentXP}");
+    }
+
+    private void LogError(PlayFabError error)
+    {
+        Debug.Log(error.GenerateErrorReport());
+    }
+
     public void OnPhotonInstantiate(PhotonMessageInfo info)
     {
         _hp = (float) info.photonView.InstantiationData[0];
+        _damage = (float) info.photonView.InstantiationData[1];
+
+        if(_photonView.IsMine)
+            Debug.Log($"HP: {_hp} Damage: {_damage}");
     }
 
     public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
