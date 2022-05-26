@@ -25,15 +25,21 @@ public sealed class PlayerController : MonoBehaviour, IPunObservable, IPunInstan
 
     private const string _VERTICAL_AXIS = "Vertical";
     private const string _HORIZONTAL_AXIS = "Horizontal";
+    private const float _minInputToRun = 0.1f;
+    private const float _minInputToRotate = 0.1f;
     private readonly KeyCode _throwGrenadeKey = KeyCode.LeftAlt;
     private readonly KeyCode _fireKey = KeyCode.Space;
     private const string _grenadeItemId = "Grenade";
     private const string _grenadePrefab = "Grenade";
     private const float _grenadeImpulseMultiplier = 5.0f;
     private const float _grenadeVerticalOffset = 2.0f;
-    private const float _timeBetweenShoots = 0.5f;
+    private const float _timeBetweenShoots = 0.1f;
     private const byte _shootCode = 1;
     private const int _xpToAdd = 500;
+
+#if UNITY_ANDROID
+    private Vector2 _centerPosition;
+#endif
 
     private void Awake()
     {
@@ -67,8 +73,38 @@ public sealed class PlayerController : MonoBehaviour, IPunObservable, IPunInstan
     {
         if(!_photonView.IsMine)
             return;
+        
+        Vector2 currentInput = new Vector2(0, 0);
+        bool shoot = false;
 
-        bool newIsRunning = Input.GetAxis(_VERTICAL_AXIS) > 0;
+#if UNITY_ANDROID
+        if(Input.touchCount > 0)
+        {
+            Touch currentTouch = Input.GetTouch(0);
+            if(currentTouch.phase == TouchPhase.Began)
+                _centerPosition = currentTouch.position;
+            currentInput = (currentTouch.position - _centerPosition)/200.0f;
+
+            if(Input.touchCount > 1)
+            {
+                Touch fireTouch = Input.GetTouch(1);
+                if(fireTouch.phase == TouchPhase.Began)
+                    shoot = true;
+            }
+        }
+#endif
+
+#if UNITY_STANDALONE || UNITY_EDITOR
+            currentInput = new Vector2(Input.GetAxis(_HORIZONTAL_AXIS),  Input.GetAxis(_VERTICAL_AXIS));
+            shoot = Input.GetKeyDown(_fireKey);
+#endif
+
+            if((currentInput.x > -_minInputToRotate) && (currentInput.x < _minInputToRotate))
+                currentInput.x = 0.0f;
+            if((currentInput.y > -_minInputToRun) && (currentInput.y < _minInputToRun))
+                currentInput.y = 0.0f;
+
+        bool newIsRunning = currentInput.y > 0;
         
         if(_isRunning != newIsRunning)
         {
@@ -76,8 +112,9 @@ public sealed class PlayerController : MonoBehaviour, IPunObservable, IPunInstan
             _animator.SetBool("IsRunning", _isRunning);
         }
 
-        float rotationAngle = Input.GetAxis(_HORIZONTAL_AXIS) * _rotationSpeed * Time.deltaTime;
+        float rotationAngle = currentInput.x * _rotationSpeed * Time.deltaTime;
         _rigidbody.MoveRotation(_modelTransform.rotation * Quaternion.AngleAxis(rotationAngle, transform.up));
+        _modelTransform.rotation = _modelTransform.rotation * Quaternion.AngleAxis(rotationAngle, transform.up);
 
         transform.position = _modelTransform.position;
         transform.rotation = _modelTransform.rotation;
@@ -95,7 +132,7 @@ public sealed class PlayerController : MonoBehaviour, IPunObservable, IPunInstan
             }
         }
 
-        if(Input.GetKeyDown(_fireKey) && (Time.time - _lastShootTime) > _timeBetweenShoots)
+        if(shoot && (Time.time - _lastShootTime) > _timeBetweenShoots)
         {
             Shoot();
         }

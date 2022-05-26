@@ -10,6 +10,8 @@ public sealed class GameClient : MonoBehaviourPunCallbacks
     [SerializeField] private ShopWindow _shopWindow;
     [SerializeField] private InventoryWindow _inventoryWindow;
     [SerializeField] private GameController _gameControllerPrefab;
+    [SerializeField] private CharactersWindow _charactersWindow;
+    [SerializeField] private NewCharacterWindow _newCharacterWindow;
     private GameController _gameController;
 
     private const byte _maxPlayersCount = 5;
@@ -61,6 +63,8 @@ public sealed class GameClient : MonoBehaviourPunCallbacks
         _newGameWindow.gameObject.SetActive(false);
         _shopWindow.gameObject.SetActive(false);
         _inventoryWindow.gameObject.SetActive(false);
+        _charactersWindow.gameObject.SetActive(false);
+        _newCharacterWindow.gameObject.SetActive(false);
         _gameController = Instantiate(_gameControllerPrefab);
         _gameController.UpdatePlayers(PhotonNetwork.PlayerList);
     }
