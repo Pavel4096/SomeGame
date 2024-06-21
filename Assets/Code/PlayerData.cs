@@ -6,6 +6,7 @@ using UnityEngine;
 public sealed class PlayerData : MonoBehaviour
 {
     public float MaxHP => _maxHP;
+    public PlayerInformation PlayerInformation;
 
     private float _maxHP;
 
@@ -14,11 +15,6 @@ public sealed class PlayerData : MonoBehaviour
         DontDestroyOnLoad(gameObject);
 
         PlayFabClientAPI.GetTitleData(new GetTitleDataRequest(), ProcessTitleData, LogError);
-    }
-
-    public PlayerData(float maxHP)
-    {
-        _maxHP = maxHP;
     }
 
     private void ProcessTitleData(GetTitleDataResult result)

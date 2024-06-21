@@ -1,7 +1,12 @@
+using System.Collections.Generic;
 using Photon.Pun;
+using Photon.Realtime;
+using ExitGames.Client.Photon;
+using PlayFab;
+using PlayFab.ClientModels;
 using UnityEngine;
 
-public sealed class PlayerController : MonoBehaviour, IPunObservable, IPunInstantiateMagicCallback
+public sealed class PlayerController : MonoBehaviour, IPunObservable, IPunInstantiateMagicCallback, IOnEventCallback
 {
     [SerializeField] private PhotonView _photonView;
     [SerializeField] private GameObject _camera;
@@ -12,15 +17,23 @@ public sealed class PlayerController : MonoBehaviour, IPunObservable, IPunInstan
     [SerializeField] private float _rotationSpeed;
     private bool _isRunning;
     private float _hp;
+    private float _damage;
     private InventoryController _inventoryController;
+    private float _lastShootTime;
+    private PlayerInformation _playerInformation;
+    private int _currentXP;
 
     private const string _VERTICAL_AXIS = "Vertical";
     private const string _HORIZONTAL_AXIS = "Horizontal";
     private readonly KeyCode _throwGrenadeKey = KeyCode.LeftAlt;
+    private readonly KeyCode _fireKey = KeyCode.Space;
     private const string _grenadeItemId = "Grenade";
     private const string _grenadePrefab = "Grenade";
     private const float _grenadeImpulseMultiplier = 5.0f;
     private const float _grenadeVerticalOffset = 2.0f;
+    private const float _timeBetweenShoots = 0.5f;
+    private const byte _shootCode = 1;
+    private const int _xpToAdd = 500;
 
     private void Awake()
     {
@@ -30,6 +43,18 @@ public sealed class PlayerController : MonoBehaviour, IPunObservable, IPunInstan
             Camera.main.gameObject.SetActive(false);
             _inventoryController = new InventoryController();
         }
+
+        PlayerData playerData = Object.FindObjectOfType<PlayerData>();
+        _playerInformation = playerData?.PlayerInformation;
+
+        PlayFabClientAPI.GetCharacterStatistics(new GetCharacterStatisticsRequest {
+            CharacterId = _playerInformation.CharacterId
+        }, ProcessAvailableStatistics, LogError);
+    }
+
+    private void OnEnable()
+    {
+        PhotonNetwork.AddCallbackTarget(this);
     }
 
     private void OnCollisionEnter(Collision collision)
@@ -43,13 +68,7 @@ public sealed class PlayerController : MonoBehaviour, IPunObservable, IPunInstan
         if(!_photonView.IsMine)
             return;
 
-        bool newIsRunning;
-        if(Input.GetAxis(_VERTICAL_AXIS) > 0)
-        {
-            newIsRunning = true;
-        }
-        else
-            newIsRunning = false;
+        bool newIsRunning = Input.GetAxis(_VERTICAL_AXIS) > 0;
         
         if(_isRunning != newIsRunning)
         {
@@ -75,11 +94,99 @@ public sealed class PlayerController : MonoBehaviour, IPunObservable, IPunInstan
                 grenade.GetComponent<Rigidbody>().AddForce(impulse, ForceMode.Impulse);
             }
         }
+
+        if(Input.GetKeyDown(_fireKey) && (Time.time - _lastShootTime) > _timeBetweenShoots)
+        {
+            Shoot();
+        }
+    }
+
+    private void OnDisable()
+    {
+        PhotonNetwork.RemoveCallbackTarget(this);
+    }
+
+    public void OnEvent(EventData eventData)
+    {
+        if(eventData.Code == _shootCode)
+        {
+            object[] data = (object[]) eventData.CustomData;
+
+            Debug.Log($"{data.GetType()}");
+            Debug.Log($"{data.Length}");
+            int viewID = (int) data[0];
+            float damage = (float) data[1];
+
+            if(_photonView.ViewID == viewID && _photonView.IsMine)
+            {
+                _hp -= damage;
+                UpdateHP(_hp);
+                if(_hp <= 0)
+                    PhotonNetwork.LeaveRoom();
+            }
+        }
+    }
+
+    private void Shoot()
+    {
+        if(Physics.Raycast(transform.position + transform.up * 0.25f, transform.forward, out RaycastHit hit))
+        {
+            PhotonView photonView = hit.transform.GetComponent<PhotonView>();
+
+            if(photonView != null && !photonView.IsMine)
+            {
+                RaiseEventOptions raiseOptions = new RaiseEventOptions {
+                    Receivers = ReceiverGroup.All
+                };
+                
+                object[] data = new object[2];
+                data[0] = photonView.ViewID;
+                data[1] = _damage;
+
+                PhotonNetwork.RaiseEvent(_shootCode, data, raiseOptions, new SendOptions {
+                    Reliability = true
+                });
+
+                UpdateStatistics();
+            }
+            _lastShootTime = Time.time;
+        }
+    }
+
+    private void UpdateStatistics()
+    {
+        _currentXP += _xpToAdd;
+        PlayFabClientAPI.UpdateCharacterStatistics(new UpdateCharacterStatisticsRequest {
+            CharacterId = _playerInformation.CharacterId,
+            CharacterStatistics = new Dictionary<string, int> {
+                ["XP"] = _currentXP
+            }
+        }, null, LogError);
+    }
+
+    private void ProcessAvailableStatistics(GetCharacterStatisticsResult result)
+    {
+        int availableXP = 0;
+        if(result.CharacterStatistics.ContainsKey("XP"))
+            availableXP = result.CharacterStatistics["XP"];
+
+        _currentXP += availableXP;
+
+        Debug.Log($"CurrentXP: {_currentXP}");
+    }
+
+    private void LogError(PlayFabError error)
+    {
+        Debug.Log(error.GenerateErrorReport());
     }
 
     public void OnPhotonInstantiate(PhotonMessageInfo info)
     {
         _hp = (float) info.photonView.InstantiationData[0];
+        _damage = (float) info.photonView.InstantiationData[1];
+
+        if(_photonView.IsMine)
+            Debug.Log($"HP: {_hp} Damage: {_damage}");
     }
 
     public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
